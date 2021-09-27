@@ -94,6 +94,8 @@ The generator script optionally takes the arguments:
 
 ``--root=outputdir`` to set the location for the output to something else than current working directory.
 
+``--nosrc`` to implement all the code in the header rather than building a separated source file (like the stb_).
+
 License
 -------
 
@@ -133,3 +135,4 @@ OpenGL_ is a registered trademark of SGI_.
 .. _OpenGL: http://www.opengl.org/
 .. _Khronos: http://www.khronos.org/
 .. _SGI: http://www.sgi.com/
+.. _stb: https://github.com/nothings/stb
