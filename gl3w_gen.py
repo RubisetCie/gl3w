@@ -42,7 +42,7 @@ except ImportError:
 # UNLICENSE copyright header
 UNLICENSE = r'''/*
  * This file was generated with gl3w_gen.py, part of gl3w
- * (hosted at https://github.com/skaslev/gl3w)
+ * (hosted at https://github.com/RubisetCie/gl3w)
  *
  * This is free and unencumbered software released into the public domain.
  *
@@ -149,14 +149,22 @@ extern "C" {
 #define GL3W_ERROR_OPENGL_VERSION -3
 
 #include <GL/glcorearb.h>
-''')
-    if args.nosrc:
-        write(f, r'''#include <stdlib.h>
-
-#define ARRAY_SIZE(x)  (sizeof(x) / sizeof((x)[0]))
 
 typedef void (*GL3WglProc)(void);
 typedef GL3WglProc (*GL3WGetProcAddressProc)(const char *proc);
+
+/* gl3w api */
+GL3W_API int gl3wInit(void);
+GL3W_API int gl3wInit2(GL3WGetProcAddressProc proc);
+GL3W_API int gl3wIsSupported(int major, int minor);
+GL3W_API GL3WglProc gl3wGetProcAddress(const char *proc);
+''')
+    if args.nosrc:
+        write(f, r'''
+#ifdef GL3W_IMPLEMENTATION
+#include <stdlib.h>
+
+#define ARRAY_SIZE(x)  (sizeof(x) / sizeof((x)[0]))
 
 #if defined(_WIN32)
 #ifndef WIN32_LEAN_AND_MEAN
@@ -253,17 +261,7 @@ static GL3WglProc get_proc(const char *proc)
 static struct {
 	int major, minor;
 } version;
-''')
-    else:
-        write(f, r'''
-typedef void (*GL3WglProc)(void);
-typedef GL3WglProc (*GL3WGetProcAddressProc)(const char *proc);
-
-/* gl3w api */
-GL3W_API int gl3wInit(void);
-GL3W_API int gl3wInit2(GL3WGetProcAddressProc proc);
-GL3W_API int gl3wIsSupported(int major, int minor);
-GL3W_API GL3WglProc gl3wGetProcAddress(const char *proc);
+#endif
 ''')
 
     write(f, r'''
@@ -276,24 +274,23 @@ GL3W_API GL3WglProc gl3wGetProcAddress(const char *proc);
         write(f, '\t\t{0: <55} {1};\n'.format('PFN{0}PROC'.format(proc.upper()), proc[2:]))
     write(f, r'''	} gl;
 };
+
+GL3W_API extern union GL3WProcs gl3wProcs;
+
+/* OpenGL functions */
 ''')
-
-    if not args.nosrc:
-        write(f, '\nGL3W_API extern union GL3WProcs gl3wProcs;\n')
-
-    write(f, '\n/* OpenGL functions */\n')
-
     for proc in procs:
         write(f, '#define {0: <48} gl3wProcs.gl.{1}\n'.format(proc, proc[2:]))
 
     if args.nosrc:
         write(f, '\nstatic const char *proc_names[] = {\n')
-        
+
         for proc in procs:
             write(f, '\t"{0}",\n'.format(proc))
             
         write(f, r'''};
 
+#ifdef GL3W_IMPLEMENTATION
 GL3W_API union GL3WProcs gl3wProcs;
 
 static int parse_version(void)
@@ -307,6 +304,14 @@ static int parse_version(void)
 	if (version.major < 3)
 		return GL3W_ERROR_OPENGL_VERSION;
 	return GL3W_OK;
+}
+
+static void load_procs(GL3WGetProcAddressProc proc)
+{
+	size_t i;
+
+	for (i = 0; i < ARRAY_SIZE(proc_names); i++)
+		gl3wProcs.ptr[i] = proc(proc_names[i]);
 }
 
 GL3W_API int gl3wInit2(GL3WGetProcAddressProc proc)
@@ -341,13 +346,7 @@ GL3W_API GL3WglProc gl3wGetProcAddress(const char *proc)
 	return get_proc(proc);
 }
 
-static void load_procs(GL3WGetProcAddressProc proc)
-{
-	size_t i;
-
-	for (i = 0; i < ARRAY_SIZE(proc_names); i++)
-		gl3wProcs.ptr[i] = proc(proc_names[i]);
-}
+#endif
 ''')
     write(f, r'''
 #ifdef __cplusplus
